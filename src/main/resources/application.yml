@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: openai
+  jpa:
+    hibernate:
+      ddl-auto: update
+  # Database Configuration (PostgreSQL/Neon)
+  datasource:
+    url: jdbc:postgresql://ep-still-glade-ad2m5ejl-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_i0aPpRN1hlct
+    driver-class-name:
+    hikari:
+      max-lifetime: 180000 # 3 minutes (Neon's default idle timeout is usually 5 mins)
+      keepalive-time: 60000 # 1 minute
+      connection-timeout: 30000
+      validation-timeout: 5000
+
+  # H2 Console (for local testing)
+  h2:
+    console:
+      enabled: true
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+      embedding:
+        model: text-embedding-3-small
+
+    # Vector DB Config (Pinecone)
+    vectorstore:
+      pinecone:
+        api-key: pcsk_74LKek_CBM96bkCt5GoEMWDneoz7ow4KJSdQ6rJKNEsW4zcHXVDBnrqB3xwJwhnF63ViRB
+        index-name: rag-index
+        environment: us-east-1
+        host: https://rag-index-mjk67eq.svc.aped-4627-b74a.pinecone.io
+
+logging:
+  level:
+    org:
+      springframework:
+        ai:
+          chat:
+            client:
+              advisor: DEBUG
