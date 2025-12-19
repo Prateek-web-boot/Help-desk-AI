@@ -12,20 +12,26 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Builder
+@ToString
 public class Ticket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String summary;
 
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
     @Column(unique = true)
-    private String username;
+    private String email;
+
+    @Column(length = 1000)
+    private String description;
+
+    private String category;
 
     private LocalDateTime createdAt;
 

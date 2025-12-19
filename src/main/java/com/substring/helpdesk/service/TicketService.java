@@ -1,30 +1,43 @@
 package com.substring.helpdesk.service;
 
-import com.substring.helpdesk.TicketRepository;
+import com.substring.helpdesk.repository.TicketRepository;
 import com.substring.helpdesk.entity.Ticket;
+import com.substring.helpdesk.tools.TicketCreationTools;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Getter
+@Setter
 public class TicketService {
+
+    private Logger logger = LoggerFactory.getLogger(TicketService.class);
+
 
     private final TicketRepository ticketRepository;
 
 
     // create ticket
-    public void createTicket(Ticket ticket) {
-
-        ticketRepository.save(ticket);
+    @Transactional
+    public Ticket createTicket(Ticket ticket) {
+        ticket.setId(null);
+        return ticketRepository.save(ticket);
     }
 
     //update ticket
-
-    public void updateTicket(Ticket ticket) {
-        Optional<Ticket> existingTicket= ticketRepository.findById(ticket.getId());
-        existingTicket.ifPresent(ticketRepository::save);
+    @Transactional
+    public Ticket updateTicket(Ticket ticket) {
+        return ticketRepository.save(ticket);
     }
 
     //find ticket by id
@@ -32,9 +45,12 @@ public class TicketService {
         return ticketRepository.findById(id).orElse(null);
     }
 
-    //find ticket by username
-    public Ticket getTicketByUsername(String username) {
-        return ticketRepository.findByUsername(username).orElse(null);
+    //find ticket by email
+    public Ticket getTicketByEmail(String email) {
+        logger.info("getTicketByEmail Service method called: " + email);
+        Ticket tt =  ticketRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+        logger.info("getTicketByEmail Service method called Data: " + tt);
+        return tt;
     }
 
 
