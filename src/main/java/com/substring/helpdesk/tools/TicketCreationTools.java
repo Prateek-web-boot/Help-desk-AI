@@ -13,6 +13,8 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 
 @Component
 @RequiredArgsConstructor
@@ -42,39 +44,35 @@ public class TicketCreationTools {
         return ticketService.updateTicket(ticket);
     }
 
-    @Tool(description = "Retrieve ticket details using the user's email address")
+    @Tool(description = "Retrieve all ticket details associated with the user's email address")
     public String getTicketByEmail(@ToolParam(description = "The user's email address") String email) {
         logger.info("Invoking tool getTicketByEmail for: {}", email);
 
-        // Fetch the entity from the service
-        Ticket tt = ticketService.getTicketByEmail(email.trim());
-        logger.info("] tool getTicketByEmail Data: {}", tt);
+        List<Ticket> tickets = ticketService.getTicketByEmail(email.trim());
 
-        if (tt == null) {
-            return "I'm sorry, I couldn't find any ticket associated with the email: " + email;
+        if (tickets == null || tickets.isEmpty()) {
+            return "I'm sorry, I couldn't find any tickets associated with the email: " + email;
         }
 
-        // IMPORTANT: Manually build the string here.
-        // This forces JPA to load the data from Neon before the tool returns.
-        return String.format(
-                "Found Ticket Details:\n" +
-                        "- ID: %d\n" +
-                        "- Summary: %s\n" +
-                        "- Status: %s\n" +
-                        "- Category: %s\n" +
-                        "- Priority: %s\n" +
-                        "- Description: %s\n" +
-                        "- Last Updated: %s",
-                tt.getId(),
-                tt.getSummary() != null ? tt.getSummary() : "N/A",
-                tt.getStatus() != null ? tt.getStatus() : "OPEN",
-                tt.getCategory() != null ? tt.getCategory() : "General",
-                tt.getPriority() != null ? tt.getPriority() : "Medium",
-                tt.getDescription() != null ? tt.getDescription() : "No description provided",
-                tt.getUpdatedAt() != null ? tt.getUpdatedAt().toString() : "N/A"
-        );
+        StringBuilder sb = new StringBuilder("I found the following tickets for you:\n");
+        for (Ticket t : tickets) {
+            sb.append(String.format(
+                    "--- Ticket #%d ---\n" +
+                            "Summary: %s\n" +
+                            "Status: %s\n" +
+                            "Priority: %s\n" +
+                            "Description: %s\n" +
+                            "Last Updated: %s\n\n",
+                    t.getId(),
+                    t.getSummary(),
+                    t.getStatus(),
+                    t.getPriority(),
+                    t.getDescription(),
+                    t.getUpdatedAt() != null ? t.getUpdatedAt().toString() : "N/A"
+            ));
+        }
+        return sb.toString();
     }
-
 
 
     // get current system time

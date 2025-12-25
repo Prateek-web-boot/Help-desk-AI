@@ -25,7 +25,6 @@ public class Ticket {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
-    @Column(unique = true)
     private String email;
 
     @Column(length = 1000)

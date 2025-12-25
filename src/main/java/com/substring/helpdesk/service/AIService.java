@@ -1,5 +1,6 @@
 package com.substring.helpdesk.service;
 
+import com.substring.helpdesk.tools.EmailTool;
 import com.substring.helpdesk.tools.TicketCreationTools;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -20,14 +21,17 @@ public class AIService {
 
     private final TicketCreationTools ticketCreationTools;
 
+    private final EmailTool emailTool;
+
     @Value("classpath:/helpdesk-prompt.st")
     private Resource systemPromptResource;
 
     private ChatMemory chatMemory;
 
-    public String chatResponse(String uQuery) {
+    public String chatResponse(String uQuery, String convoId) {
         return this.chatClient.prompt()
-                .tools(ticketCreationTools)
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, convoId))
+                .tools(ticketCreationTools, emailTool)
                 .system(systemPromptResource)
                 .user(uQuery)
                 .call()

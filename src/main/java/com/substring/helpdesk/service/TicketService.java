@@ -46,9 +46,9 @@ public class TicketService {
     }
 
     //find ticket by email
-    public Ticket getTicketByEmail(String email) {
+    public List<Ticket> getTicketByEmail(String email) {
         logger.info("getTicketByEmail Service method called: " + email);
-        Ticket tt =  ticketRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+        List<Ticket> tt =  ticketRepository.findByEmailIgnoreCase(email.trim());
         logger.info("getTicketByEmail Service method called Data: " + tt);
         return tt;
     }
