@@ -6,7 +6,6 @@ import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/helpdesk")
-@CrossOrigin
+@CrossOrigin(origins = "*")
 public class AIController {
 
     @Autowired
