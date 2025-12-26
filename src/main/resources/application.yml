@@ -46,3 +46,5 @@ logging:
           chat:
             client:
               advisor: DEBUG
+server:
+  port: 8080
