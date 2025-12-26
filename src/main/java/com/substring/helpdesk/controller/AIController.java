@@ -3,11 +3,16 @@ package com.substring.helpdesk.controller;
 import com.substring.helpdesk.entity.Conversation;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
+import com.substring.helpdesk.service.AudioToTextService;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +27,8 @@ public class AIController {
     private ConversationRepository conversationRepository;
     @Autowired
     private JdbcChatMemoryRepository jdbcChatMemoryRepository;
+    @Autowired
+    private AudioToTextService audioToTextService;
 
 
     @PostMapping
@@ -80,5 +87,16 @@ public class AIController {
 
     // Simple record for serialization
     public record ChatMessageDTO(String role, String content) {}
+
+    //4. Audio to Text ENDPOINT
+
+    @PostMapping("/transcribe")
+    public ResponseEntity<String> convertAudioToText(@RequestHeader("audio") MultipartFile file) throws IOException {
+
+        Resource audioResource = file.getResource();
+        String text = audioToTextService.transcribe(audioResource);
+        return ResponseEntity.ok(text);
+
+    }
 
 }
