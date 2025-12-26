@@ -6,9 +6,9 @@ spring:
       ddl-auto: update
   # Database Configuration (PostgreSQL/Neon)
   datasource:
-    url: jdbc:postgresql://ep-still-glade-ad2m5ejl-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
-    username: neondb_owner
-    password: npg_i0aPpRN1hlct
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name:
     hikari:
       max-lifetime: 180000 # 3 minutes (Neon's default idle timeout is usually 5 mins)
@@ -33,7 +33,7 @@ spring:
     # Vector DB Config (Pinecone)
     vectorstore:
       pinecone:
-        api-key: pcsk_74LKek_CBM96bkCt5GoEMWDneoz7ow4KJSdQ6rJKNEsW4zcHXVDBnrqB3xwJwhnF63ViRB
+        api-key: ${PINECONE_API_KEY}
         index-name: rag-index
         environment: us-east-1
         host: https://rag-index-mjk67eq.svc.aped-4627-b74a.pinecone.io
