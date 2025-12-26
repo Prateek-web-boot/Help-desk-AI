@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/helpdesk")
-@CrossOrigin(origins = "*")
 public class AIController {
 
     @Autowired
