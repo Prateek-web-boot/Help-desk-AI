@@ -9,6 +9,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
+                .allowedOriginPatterns("*")
                 .allowedOrigins(
                         "http://localhost:5173",
                         "https://helpdesk-ai-frontend-green.vercel.app")
