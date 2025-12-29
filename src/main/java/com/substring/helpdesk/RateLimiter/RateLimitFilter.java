@@ -47,9 +47,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } else {
             //Reject if empty
+            // 1. Manually add CORS headers so Vercel accepts the 429 response
+            response.setHeader("Access-Control-Allow-Origin", "https://helpdesk-ai-frontend-green.vercel.app");
+            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "*");
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+
+            // 2. Return the 429 status
             response.setStatus(429);
-            response.setHeader("X-Rate-Limit-Retry-After-Seconds", "60");
-            response.getWriter().write("Too Many Requests");
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Too many requests. Please wait a moment.\"}");
+
         }
 
     }
