@@ -37,6 +37,9 @@ public class AIService {
     private ChatMemory chatMemory;
 
     public String chatResponse(String uQuery, String convoId, String userEmail) {
+
+        String tweakedQuery = uQuery + " (Note: If the answer isn't in the provided context documents, check our chat history for the answer.)";
+
         return this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
                         .param(ChatMemory.CONVERSATION_ID, convoId)
@@ -47,11 +50,14 @@ public class AIService {
                                         .topK(1)
                                         .build())
                                 .build())
+                        .advisors()
+
+
 
                 )
                 .tools(ticketCreationTools, emailTool)
                 .system(systemPromptResource)
-                .user(uQuery)
+                .user(tweakedQuery)
                 .call()
                 .content();
     }
