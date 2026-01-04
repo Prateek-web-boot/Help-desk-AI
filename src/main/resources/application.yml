@@ -32,19 +32,27 @@ spring:
 
     # Vector DB Config (Pinecone)
     vectorstore:
-      pinecone:
-        api-key: ${PINECONE_API_KEY}
-        index-name: rag-index
-        environment: us-east-1
-        host: https://rag-index-mjk67eq.svc.aped-4627-b74a.pinecone.io
+    # PINECOME: For General RAG Knowledge
+#      pinecone:
+#        api-key: ${PINECONE_API_KEY}
+#        index-name: rag-index
+#        environment: us-east-1
+#        host: https://rag-index-mjk67eq.svc.aped-4627-b74a.pinecone.io
+      pgvector:
+        table-name: semantic_cache
+        dimensions: 1536
+        initialize-schema: false
+        index-type: hnsw
 
 logging:
   level:
+    root: INFO
     org:
       springframework:
         ai:
           chat:
             client:
               advisor: DEBUG
+          vectorstore: DEBUG
 server:
   port: ${PORT:8080}

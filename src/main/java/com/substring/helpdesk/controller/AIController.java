@@ -4,6 +4,7 @@ import com.substring.helpdesk.entity.Conversation;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
+import com.substring.helpdesk.service.SemanticCacheService;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -28,10 +29,13 @@ public class AIController {
     @Autowired
     private AudioToTextService audioToTextService;
 
+    @Autowired
+    private SemanticCacheService semanticCacheService;
+
 
     @PostMapping
-    public ResponseEntity<String> addTicket(@RequestBody String uQuery, @RequestHeader("conversationId") String conversationId) {
-        String response = aiService.chatResponse(uQuery,conversationId);
+    public ResponseEntity<String> addTicket(@RequestBody String uQuery, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
+        String response = aiService.chatResponse(uQuery,conversationId, email);
         return ResponseEntity.ok(response);
     }
 
@@ -42,6 +46,7 @@ public class AIController {
             @RequestBody String uQuery,
             @RequestHeader("conversationId") String conversationId,
             @RequestHeader("userEmail") String email) {
+
 
         // If this is the first message in a new session, create the sidebar entry
         if (!conversationRepository.existsById(conversationId)) {
@@ -56,8 +61,13 @@ public class AIController {
         }
 
         // Get AI Response using your AIService
-        String response = aiService.chatResponse(uQuery, conversationId);
+        String response = aiService.chatResponse(uQuery, conversationId, email);
+
+        // setting the cache
+        semanticCacheService.setCachedAnswer(email, uQuery, response);
+
         return ResponseEntity.ok(response);
+
     }
 
     // 2. SIDEBAR ENDPOINT: Gets list of all chats for the logged-in user
@@ -87,7 +97,6 @@ public class AIController {
     public record ChatMessageDTO(String role, String content) {}
 
     //4. Audio to Text ENDPOINT
-
     @PostMapping("/transcribe")
     public ResponseEntity<String> convertAudioToText(@RequestHeader("audio") MultipartFile file) throws IOException {
 
@@ -96,5 +105,8 @@ public class AIController {
         return ResponseEntity.ok(text);
 
     }
+
+
+
 
 }
