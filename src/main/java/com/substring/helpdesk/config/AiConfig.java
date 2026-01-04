@@ -17,18 +17,22 @@ public class AiConfig {
     Logger logger = LoggerFactory.getLogger(AiConfig.class);
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder, JdbcChatMemoryRepository chatMemoryRepository) {
-
-        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+    public ChatMemory chatMemory(JdbcChatMemoryRepository chatMemoryRepository) {
+        return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(15)
                 .build();
+    }
 
-        logger.info("Chat Client bean created");
-        logger.info("Chat Memory bean created, {}", chatMemory.getClass().getName());
+    @Bean
+    public ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
 
         return builder
-                .defaultAdvisors(new SimpleLoggerAdvisor(),
-                        MessageChatMemoryAdvisor.builder(chatMemory).build()).build();
+                .defaultAdvisors(
+                        new SimpleLoggerAdvisor(),
+                        // Memory is added as a DEFAULT, meaning it runs first!
+                        MessageChatMemoryAdvisor.builder(chatMemory).build()
+                )
+                .build();
     }
 }
