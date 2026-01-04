@@ -42,7 +42,7 @@ public class AIService {
                         .param(ChatMemory.CONVERSATION_ID, convoId)
                         .advisors(QuestionAnswerAdvisor.builder(neonCacheVectorStore)
                                 .searchRequest(SearchRequest.builder()
-                                        .similarityThreshold(0.95)
+                                        .similarityThreshold(0.97)
                                         .filterExpression("userEmail == '" + userEmail + "' && convoId == '" + convoId + "'")
                                         .topK(1)
                                         .build())
