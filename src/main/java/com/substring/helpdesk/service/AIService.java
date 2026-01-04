@@ -40,6 +40,13 @@ public class AIService {
 
         String tweakedQuery = uQuery + " (Note: If the answer isn't in the provided context documents, check our chat history for the answer.)";
 
+        String identityInstructions = String.format(
+                "\n[IDENTITY CONTEXT]: The current user is logged in with email: %s. " +
+                        "You already have this email. NEVER ask the user for their email address. " +
+                        "Use this email automatically for all ticket searches and creations.",
+                userEmail
+        );
+
         return this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
                         .param(ChatMemory.CONVERSATION_ID, convoId)
@@ -56,7 +63,7 @@ public class AIService {
 
                 )
                 .tools(ticketCreationTools, emailTool)
-                .system(systemPromptResource)
+                .system(s-> s.text(systemPromptResource + "\n" + identityInstructions))
                 .user(tweakedQuery)
                 .call()
                 .content();
