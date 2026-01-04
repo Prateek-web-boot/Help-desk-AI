@@ -44,6 +44,22 @@ spring:
         initialize-schema: false
         index-type: hnsw
 
+    mcp:
+      client:
+        enabled: true
+        stdio:
+          connections:
+            github:
+              command: C:\Users\PrateekGupta\AppData\Roaming\npm\mcp-server-github.cmd
+              args: []
+
+              env:
+                GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PAT}
+        toolcallback:
+          enabled: true
+
+
+
 logging:
   level:
     root: INFO

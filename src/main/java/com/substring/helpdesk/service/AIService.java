@@ -2,12 +2,14 @@ package com.substring.helpdesk.service;
 
 import com.substring.helpdesk.tools.EmailTool;
 import com.substring.helpdesk.tools.TicketCreationTools;
+import io.modelcontextprotocol.client.McpSyncClient;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -15,17 +17,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.core.io.Resource;
 
+import java.util.List;
+
 @Service
-@RequiredArgsConstructor
 @Getter
 @Setter
 public class AIService {
 
     private final ChatClient chatClient;
 
-    private final TicketCreationTools ticketCreationTools;
-
-    private final EmailTool emailTool;
+//    private final TicketCreationTools ticketCreationTools;
+//
+//    private final EmailTool emailTool;
 
     @Value("classpath:/helpdesk-prompt.st")
     private Resource systemPromptResource;
@@ -35,6 +38,28 @@ public class AIService {
     private final VectorStore neonCacheVectorStore;
 
     private ChatMemory chatMemory;
+
+
+    private final McpSyncClient mcpSyncClient;
+
+
+    public AIService(ChatClient.Builder builder,
+                     List<McpSyncClient> mcpClients,
+                     @Qualifier("pgVectorStore") VectorStore neonVectorStore) {
+
+        this.mcpSyncClient = mcpClients.get(0);
+        this.neonCacheVectorStore = neonVectorStore;
+
+
+        var mcpToolProvider = new SyncMcpToolCallbackProvider(mcpClients);
+
+        this.chatClient = builder
+                .defaultToolCallbacks(mcpToolProvider.getToolCallbacks())
+                .build();
+
+    }
+
+
 
     public String chatResponse(String uQuery, String convoId, String userEmail) {
 
@@ -57,13 +82,9 @@ public class AIService {
                                         .topK(1)
                                         .build())
                                 .build())
-                        .advisors()
-
-
-
                 )
-                .tools(ticketCreationTools, emailTool)
-                .system(s-> s.text(systemPromptResource + "\n" + identityInstructions))
+//                .tools(ticketCreationTools, emailTool)
+                .system(s-> s.text(systemPromptResource).params(java.util.Map.of("identity", identityInstructions)))
                 .user(tweakedQuery)
                 .call()
                 .content();

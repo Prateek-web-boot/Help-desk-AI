@@ -1,5 +1,7 @@
 package com.substring.helpdesk.config;
 
+import io.modelcontextprotocol.client.McpClient;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,6 +28,7 @@ public class AiConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+
 
         return builder
                 .defaultAdvisors(
