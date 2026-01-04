@@ -15,9 +15,13 @@ public class SemanticCacheService {
     private VectorStore vectorStore;
 
 
-    public void setCachedAnswer(String userEmail, String question, String answer) {
+    public void setCachedAnswer(String userEmail, String question, String answer, String convoId) {
 
-        Document doc = new Document(question, Map.of("userEmail", userEmail, "cachedAnswer", answer));
+        Document doc = new Document(question,
+                Map.of("userEmail", userEmail,
+                        "convoId", convoId,
+                        "cachedAnswer", answer
+                ));
         vectorStore.add(List.of(doc));
     }
 

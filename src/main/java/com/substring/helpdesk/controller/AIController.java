@@ -64,7 +64,7 @@ public class AIController {
         String response = aiService.chatResponse(uQuery, conversationId, email);
 
         // setting the cache
-        semanticCacheService.setCachedAnswer(email, uQuery, response);
+        semanticCacheService.setCachedAnswer(email, uQuery, response, conversationId);
 
         return ResponseEntity.ok(response);
 
