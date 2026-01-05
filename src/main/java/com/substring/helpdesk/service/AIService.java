@@ -14,6 +14,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -46,7 +47,7 @@ public class AIService {
     private final McpSyncClient mcpSyncClient;
 
 
-    public AIService(ChatClient.Builder builder,
+    public AIService(@Lazy ChatClient.Builder builder,
                      List<McpSyncClient> mcpClients,
                      @Qualifier("pgVectorStore") VectorStore neonVectorStore) {
 
