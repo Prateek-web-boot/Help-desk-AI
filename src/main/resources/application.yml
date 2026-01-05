@@ -50,8 +50,10 @@ spring:
         stdio:
           connections:
             github:
-              command: C:\Users\PrateekGupta\AppData\Roaming\npm\mcp-server-github.cmd
-              args: []
+              command: ${MCP_GITHUB_COMMAND:npx}
+              args:
+                - "-y"
+                - "@modelcontextprotocol/server-github"
 
               env:
                 GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PAT}
