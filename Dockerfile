@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y curl \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+RUN npm install -g @modelcontextprotocol/server-github
+
 # Copy the jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
