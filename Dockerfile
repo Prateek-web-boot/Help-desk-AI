@@ -19,7 +19,6 @@ RUN java -version && node -v && npm -v
 
 # Copies the jar file generated in the build stage
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
 
 # Environment variable for port ensures Render can bind correctly
-ENTRYPOINT ["java", "-Dserver.port=${PORT:8080}", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Dserver.port=${PORT:10000}", "-jar", "app.jar"]
