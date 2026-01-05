@@ -59,6 +59,8 @@ public class AIService {
 
         this.chatClient = builder
                 .defaultToolCallbacks(mcpToolProvider.getToolCallbacks())
+                .defaultSystem("You are Brio. If you call a tool and get a result, " +
+                        "always show that result to the user immediately.")
                 .build();
 
     }

@@ -59,6 +59,7 @@ spring:
                 GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PAT}
         toolcallback:
           enabled: true
+        request-timeout: 30s
 
 
 
