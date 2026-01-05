@@ -14,6 +14,9 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.core.io.Resource;
 
@@ -60,7 +63,15 @@ public class AIService {
     }
 
 
-
+    @Retryable(
+            retryFor = { Exception.class }, // Catches OpenAI 429s and connection timeouts
+            maxAttempts = 3,
+            backoff = @Backoff(
+                    delay = 2000,      // Start with 2 seconds
+                    multiplier = 2.0,  // Then 4 seconds, then 8 seconds
+                    maxDelay = 10000   // Never wait more than 10 seconds
+            )
+    )
     public String chatResponse(String uQuery, String convoId, String userEmail) {
 
         String tweakedQuery = uQuery + " (Note: If the answer isn't in the provided context documents, check our chat history for the answer.)";
@@ -88,6 +99,15 @@ public class AIService {
                 .user(tweakedQuery)
                 .call()
                 .content();
+    }
+
+
+
+    // This method runs ONLY if all 3 retries fail
+    @Recover
+    public String recover(Exception e, String chatId, String userMessage) {
+        System.err.println("All retries failed for " + chatId + ". Error: " + e.getMessage());
+        return "I'm having trouble connecting to my brain (OpenAI) right now due to rate limits. ";
     }
 
 }
