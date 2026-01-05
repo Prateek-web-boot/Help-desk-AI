@@ -1,6 +1,9 @@
 spring:
   application:
-    name: openai
+    name: brio-helpdesk
+
+  profiles:
+    active: prod
   jpa:
     hibernate:
       ddl-auto: update
@@ -73,4 +76,4 @@ logging:
               advisor: DEBUG
           vectorstore: DEBUG
 server:
-  port: ${PORT:8080}
+  port: ${PORT:10000}
