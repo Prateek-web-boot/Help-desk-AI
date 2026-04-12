@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.core.io.Resource;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Getter
@@ -34,31 +35,38 @@ public class AIService {
 //
 //    private final EmailTool emailTool;
 
+    private final VectorStore companyDocsVectorStore;
+    private final SemanticCacheService semanticCacheService;
+
     @Value("classpath:/helpdesk-prompt.st")
     private Resource systemPromptResource;
 
 
-    @Qualifier("pgVectorStore")
-    private final VectorStore neonCacheVectorStore;
+    @Qualifier("conversationVectorStore")
+    private final VectorStore conversationVectorStore;
 
     private ChatMemory chatMemory;
 
 
-    private final McpSyncClient mcpSyncClient;
+//    private final McpSyncClient mcpSyncClient;
 
 
     public AIService(@Lazy ChatClient.Builder builder,
+                     @Qualifier("conversationVectorStore") VectorStore conversationVectorStore,
+                     @Qualifier("companyDocsVectorStore") VectorStore companyDocsVectorStore,
                      List<McpSyncClient> mcpClients,
-                     @Qualifier("pgVectorStore") VectorStore neonVectorStore) {
+                     SemanticCacheService semanticCacheService) {
 
-        this.mcpSyncClient = mcpClients.get(0);
-        this.neonCacheVectorStore = neonVectorStore;
+//        this.mcpSyncClient = mcpClients.get(0);
+        this.conversationVectorStore = conversationVectorStore;
+        this.companyDocsVectorStore = companyDocsVectorStore;
+        this.semanticCacheService = semanticCacheService;
 
 
-        var mcpToolProvider = new SyncMcpToolCallbackProvider(mcpClients);
+//        var mcpToolProvider = new SyncMcpToolCallbackProvider(mcpClients);
 
         this.chatClient = builder
-                .defaultToolCallbacks(mcpToolProvider.getToolCallbacks())
+//                .defaultToolCallbacks(mcpToolProvider.getToolCallbacks())
                 .defaultSystem("You are Brio. If you call a tool and get a result, " +
                         "always show that result to the user immediately.")
                 .build();
@@ -77,7 +85,58 @@ public class AIService {
     )
     public String chatResponse(String uQuery, String convoId, String userEmail) {
 
-        String tweakedQuery = uQuery + " (Note: If the answer isn't in the provided context documents, check our chat history for the answer.)";
+
+        String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail,uQuery);
+
+        if(cachedAnswer != null){
+            return cachedAnswer;
+        }
+
+        String identityInstructions = String.format(
+                "[IDENTITY CONTEXT]: user email is %s. Never ask again.",
+                userEmail
+        );
+
+        //2. Multi RAG + LLM
+        String response = this.chatClient.prompt()
+                .advisors(advisorSpec -> advisorSpec
+                        .param(ChatMemory.CONVERSATION_ID, convoId)
+                        .advisors(
+
+                                //Company Docs RAG
+                                QuestionAnswerAdvisor.builder(companyDocsVectorStore)
+                                        .searchRequest(SearchRequest.builder()
+                                                .similarityThreshold(0.8)
+                                                .topK(3)
+                                                .build())
+                                        .build(),
+
+
+                                //User Cache Content( optional Context)
+                                QuestionAnswerAdvisor.builder(conversationVectorStore)
+                                        .searchRequest(SearchRequest.builder()
+                                                .similarityThreshold(0.9)
+                                                .filterExpression("userEmail == '" + userEmail + "'")
+                                                .topK(1)
+                                                .build())
+                                        .build()
+                        ))
+                .system(s -> s.text(systemPromptResource)
+                        .params(Map.of("identity", identityInstructions)))
+                .user(uQuery)
+                .call()
+                .content();
+
+
+        //3.save Cache
+        semanticCacheService.setCachedAnswer(userEmail, uQuery, response, convoId);
+
+        return response;
+
+
+
+
+       /* String tweakedQuery = uQuery + " (Note: If the answer isn't in the provided context documents, check our chat history for the answer.)";
 
         String identityInstructions = String.format(
                 "\n[IDENTITY CONTEXT]: The current user is logged in with email: %s. " +
@@ -101,7 +160,7 @@ public class AIService {
                 .system(s-> s.text(systemPromptResource).params(java.util.Map.of("identity", identityInstructions)))
                 .user(tweakedQuery)
                 .call()
-                .content();
+                .content();*/
     }
 
 

@@ -29,11 +29,31 @@ public class VectorStoreConfig {
 //    }
 
 
-    @Primary
-    @Bean
+    @Bean(name = "conversationVectorStore")
     public VectorStore pgVectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel)
                 .vectorTableName("semantic_cache")
+                .initializeSchema(true)
+                .build();
+    }
+
+
+    @Bean
+    public VectorStore semanticCacheVectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .vectorTableName("user_query_cache")
+                .initializeSchema(true)
+                .build();
+    }
+
+    @Primary
+    @Bean(name = "companyDocsVectorStore")
+    public VectorStore companyDocsVectorStore(
+            EmbeddingModel embeddingModel,
+            JdbcTemplate jdbcTemplate) {
+
+        return PgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .vectorTableName("company_docs")
                 .initializeSchema(true)
                 .build();
     }

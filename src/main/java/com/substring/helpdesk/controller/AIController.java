@@ -1,12 +1,21 @@
 package com.substring.helpdesk.controller;
 
 import com.substring.helpdesk.entity.Conversation;
+import com.substring.helpdesk.entity.Player;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
 import com.substring.helpdesk.service.SemanticCacheService;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/helpdesk")
@@ -33,6 +43,16 @@ public class AIController {
     private SemanticCacheService semanticCacheService;
 
 
+    private ChatClient chatClient;
+
+    public AIController(ChatClient.Builder chatClientBuilder) {
+
+        this.chatClient = chatClientBuilder
+//        .defaultTools(toolCallbackProvider)
+    .build();
+
+
+    }
     @PostMapping
     public ResponseEntity<String> addTicket(@RequestBody String uQuery, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
         String response = aiService.chatResponse(uQuery,conversationId, email);
@@ -63,12 +83,53 @@ public class AIController {
         // Get AI Response using your AIService
         String response = aiService.chatResponse(uQuery, conversationId, email);
 
-        // setting the cache
-        semanticCacheService.setCachedAnswer(email, uQuery, response, conversationId);
-
         return ResponseEntity.ok(response);
 
     }
+
+
+/*
+    @GetMapping("/chat/formatted")
+    public List<Player> getOutputinCertainFormat(@RequestParam String sportName) {
+
+        BeanOutputConverter<List<Player>> converter =
+                new BeanOutputConverter<>(new ParameterizedTypeReference<List<Player>>() {
+
+        });
+
+        String message = """
+    Generate a list of Career Achievements for the sport {sportName} for top 3 players.
+    Each player should have at least two achievements in {format}.
+    """;
+
+        PromptTemplate template  = new PromptTemplate(message);
+
+        Prompt prompt = template.create(Map.of("sportName", sportName, "format", converter.getFormat()));
+
+//        ChatResponse response = chatClient.prompt(prompt).call().chatResponse();
+//
+//        return response.getResult().getOutput().getContent();
+
+        Generation result =  chatClient.prompt(prompt).call().chatResponse()
+                .getResult();
+
+        return converter.convert(result.getOutput().getText());
+
+
+
+
+
+    }*/
+
+/*
+    @PostMapping("/chat/git")
+    public ResponseEntity<String> chatWithGit(@RequestParam("query") String query) {
+
+        String response = chatClient.prompt(query).call().content();
+
+        return  ResponseEntity.ok(response);
+    }*/
+
 
     // 2. SIDEBAR ENDPOINT: Gets list of all chats for the logged-in user
     @GetMapping("/conversations")
