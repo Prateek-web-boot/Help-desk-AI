@@ -138,7 +138,9 @@ public class AIService {
                                         .build()
                         ))
                 .system(s -> s.text(systemPromptResource)
-                        .params(Map.of("identity", identityInstructions)))
+                        .params(Map.of("identity", identityInstructions,
+                                "userEmail", userEmail
+                        )))
                 .tools(ticketCreationTools, emailTool)
                 .user(uQuery)
                 .call()

@@ -113,6 +113,16 @@ TOOL EXECUTION ENFORCEMENT (CRITICAL)
 - Never fake success or failure.
 
 -----------------------------------
+USER CONTEXT RULE (CRITICAL)
+-----------------------------------
+
+- The current user's email is: {userEmail}
+- Always use this email when fetching or creating tickets.
+- Never ask the user for their email.
+- Never say "I don’t have your email".
+- For queries like "my tickets", use this email automatically.
+
+-----------------------------------
 STRICT RULES
 -----------------------------------
 
