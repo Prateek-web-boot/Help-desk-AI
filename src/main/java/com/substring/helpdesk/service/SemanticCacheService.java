@@ -4,6 +4,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,10 +13,15 @@ import java.util.Map;
 @Service
 public class SemanticCacheService {
 
-    @Autowired
-    private VectorStore vectorStore;
-    @Autowired
-    private VectorStore semanticCacheVectorStore;
+
+    @Qualifier("userQueryCacheVectorStore")
+    private final VectorStore semanticCacheVectorStore;
+
+    public SemanticCacheService(
+            @Qualifier("userQueryCacheVectorStore") VectorStore semanticCacheVectorStore
+    ) {
+        this.semanticCacheVectorStore = semanticCacheVectorStore;
+    }
 
 
     public void setCachedAnswer(String userEmail, String question, String answer, String convoId) {
@@ -25,24 +31,26 @@ public class SemanticCacheService {
                         "convoId", convoId,
                         "cachedAnswer", answer
                 ));
-        vectorStore.add(List.of(doc));
+        semanticCacheVectorStore.add(List.of(doc));
     }
 
 
 
-    public String getCachedAnswer(String email, String query) {
+    public String getCachedAnswer(String email, String query, String convoId) {
 
         List<Document> results = semanticCacheVectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(query)
-                        .similarityThreshold(0.9)
-                        .filterExpression("userEmail== '" + email + "'")
-                        .topK(1)
+                        .similarityThreshold(0.95)
+                        .filterExpression("userEmail == '" + email + "' && convoId == '" + convoId + "'")                        .topK(3)
                         .build()
         );
 
-        if(!results.isEmpty()){
-            return results.get(0).getText();
+        if (!results.isEmpty()) {
+            Map<String, Object> metadata = results.get(0).getMetadata();
+            if (metadata != null && metadata.containsKey("cachedAnswer")) {
+                return metadata.get("cachedAnswer").toString();
+            }
         }
         return null;
     }

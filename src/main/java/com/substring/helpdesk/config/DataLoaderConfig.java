@@ -1,3 +1,4 @@
+/*
 package com.substring.helpdesk.config;
 
 import com.substring.helpdesk.service.DocumentIngestPipeline;
@@ -23,4 +24,4 @@ public class DataLoaderConfig {
             System.out.println("✅ PDF ingested successfully!");
         };
     }
-}
+}*/

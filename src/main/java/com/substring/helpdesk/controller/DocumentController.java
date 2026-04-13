@@ -1,26 +1,44 @@
 package com.substring.helpdesk.controller;
 
 import com.substring.helpdesk.service.DocumentIngestPipeline;
+import com.substring.helpdesk.service.PdfLoaderService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/docs")
 public class DocumentController {
 
-    private final DocumentIngestPipeline ingestionService;
+    private final PdfLoaderService pdfLoaderService;
+    private final DocumentIngestPipeline documentIngestPipeline;
 
-    public DocumentController(DocumentIngestPipeline ingestionService) {
-        this.ingestionService = ingestionService;
+
+    public DocumentController(PdfLoaderService pdfLoaderService, DocumentIngestPipeline documentIngestPipeline){
+        this.pdfLoaderService = pdfLoaderService;
+        this.documentIngestPipeline = documentIngestPipeline;
     }
-
 
     @PostMapping("/upload")
-    public String uploadDoc(@RequestBody String content,
-                            @RequestParam String project) {
+    public ResponseEntity<String> uploadDoc(@RequestParam("file") MultipartFile file,
+                                           @RequestParam("project") String project) {
 
-        ingestionService.ingest(content, project);
+        if(file.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
 
-        return "Document ingested successfully!";
+        String content = pdfLoaderService.loadPdfText(file);
+
+        documentIngestPipeline.ingest(content, project);
+
+        return ResponseEntity.ok("Document Uploaded & Ingested successfully!");
+
+
+
     }
+
+
+
 
 }

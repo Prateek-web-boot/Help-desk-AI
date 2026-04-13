@@ -47,11 +47,8 @@ public class DocumentIngestPipeline {
         System.out.println("📦 Ready to insert chunks: " + finalChunks.size());
 
         // Step 4: Insert
-        System.out.println("🔥 BEFORE ADD CALL");
-
         companyDocsVectorStore.add(finalChunks);
 
-        System.out.println("🔥 AFTER ADD CALL");
         System.out.println("✅ Insert completed!");
     }
 

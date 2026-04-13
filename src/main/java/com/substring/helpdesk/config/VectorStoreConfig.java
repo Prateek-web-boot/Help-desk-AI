@@ -38,7 +38,7 @@ public class VectorStoreConfig {
     }
 
 
-    @Bean
+    @Bean(name = "userQueryCacheVectorStore")
     public VectorStore semanticCacheVectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
         return PgVectorStore.builder(jdbcTemplate, embeddingModel)
                 .vectorTableName("user_query_cache")

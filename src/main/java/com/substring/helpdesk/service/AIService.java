@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -31,11 +32,13 @@ public class AIService {
 
     private final ChatClient chatClient;
 
-//    private final TicketCreationTools ticketCreationTools;
-//
-//    private final EmailTool emailTool;
+    private final TicketCreationTools ticketCreationTools;
 
+    private final EmailTool emailTool;
+
+    @Qualifier("companyDocsVectorStore")
     private final VectorStore companyDocsVectorStore;
+
     private final SemanticCacheService semanticCacheService;
 
     @Value("classpath:/helpdesk-prompt.st")
@@ -48,25 +51,22 @@ public class AIService {
     private ChatMemory chatMemory;
 
 
-//    private final McpSyncClient mcpSyncClient;
-
 
     public AIService(@Lazy ChatClient.Builder builder,
                      @Qualifier("conversationVectorStore") VectorStore conversationVectorStore,
                      @Qualifier("companyDocsVectorStore") VectorStore companyDocsVectorStore,
-                     List<McpSyncClient> mcpClients,
-                     SemanticCacheService semanticCacheService) {
+                     SemanticCacheService semanticCacheService,
+                     TicketCreationTools ticketCreationTools,
+                     EmailTool emailTool) {
 
-//        this.mcpSyncClient = mcpClients.get(0);
         this.conversationVectorStore = conversationVectorStore;
         this.companyDocsVectorStore = companyDocsVectorStore;
         this.semanticCacheService = semanticCacheService;
+        this.ticketCreationTools = ticketCreationTools;
+        this.emailTool = emailTool;
 
-
-//        var mcpToolProvider = new SyncMcpToolCallbackProvider(mcpClients);
 
         this.chatClient = builder
-//                .defaultToolCallbacks(mcpToolProvider.getToolCallbacks())
                 .defaultSystem("You are Brio. If you call a tool and get a result, " +
                         "always show that result to the user immediately.")
                 .build();
@@ -85,10 +85,26 @@ public class AIService {
     )
     public String chatResponse(String uQuery, String convoId, String userEmail) {
 
+        System.out.println("QUERY: " + uQuery);
 
-        String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail,uQuery);
+
+        String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail,uQuery, convoId);
 
         if(cachedAnswer != null){
+            System.out.println("CACHE HIT ❌: " + cachedAnswer);
+        } else {
+            System.out.println("CACHE MISS ✅");
+        }
+
+        if(cachedAnswer != null){
+            // still store interaction
+            conversationVectorStore.add(List.of(
+                    new Document(uQuery, Map.of(
+                            "userEmail", userEmail,
+                            "convoId", convoId,
+                            "response", cachedAnswer
+                    ))
+            ));
             return cachedAnswer;
         }
 
@@ -123,14 +139,16 @@ public class AIService {
                         ))
                 .system(s -> s.text(systemPromptResource)
                         .params(Map.of("identity", identityInstructions)))
+                .tools(ticketCreationTools, emailTool)
                 .user(uQuery)
                 .call()
                 .content();
 
 
         //3.save Cache
-        semanticCacheService.setCachedAnswer(userEmail, uQuery, response, convoId);
-
+        if(uQuery.length() > 10 && !response.contains("I don't know")) {
+            semanticCacheService.setCachedAnswer(userEmail, uQuery, response, convoId);
+        }
         return response;
 
 
