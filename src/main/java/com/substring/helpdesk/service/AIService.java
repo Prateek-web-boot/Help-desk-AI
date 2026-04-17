@@ -131,8 +131,14 @@ public class AIService {
     }
 
     @Recover
-    public String recover(Exception e, String chatId, String userMessage) {
-        log.error("All retries failed for conversationId={}", chatId, e);
+    public String recover(Exception e, String uQuery, String convoId, String userEmail) {
+        log.error(
+                "All retries failed for conversationId={} and userEmail={} while processing query={}",
+                convoId,
+                userEmail,
+                uQuery,
+                e
+        );
         return "I'm having trouble connecting to my brain (OpenAI) right now due to rate limits.";
     }
 }

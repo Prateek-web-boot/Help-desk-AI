@@ -1,13 +1,14 @@
 package com.substring.helpdesk.controller;
 
 import com.substring.helpdesk.entity.ChatMessageDTO;
-import com.substring.helpdesk.entity.ChatRequestDTO;
 import com.substring.helpdesk.entity.Conversation;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -30,8 +31,10 @@ public class AIController {
     private JdbcChatMemoryRepository jdbcChatMemoryRepository;
     @Autowired
     private AudioToTextService audioToTextService;
+    @Autowired
+    private ObjectMapper objectMapper;
     @PostMapping
-    public ResponseEntity<String> addTicket(@RequestBody ChatRequestDTO requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
+    public ResponseEntity<String> addTicket(@RequestBody String requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
         String response = aiService.chatResponse(normalizeQuery(requestBody), conversationId, email);
         return ResponseEntity.ok(response);
     }
@@ -40,7 +43,7 @@ public class AIController {
     // 1. CHAT ENDPOINT: Handles sending messages and creating conversation metadata
     @PostMapping("/chat")
     public ResponseEntity<String> chat(
-            @RequestBody ChatRequestDTO requestBody,
+            @RequestBody String requestBody,
             @RequestHeader("conversationId") String conversationId,
             @RequestHeader("userEmail") String email) {
 
@@ -142,11 +145,29 @@ public class AIController {
 
     }
 
-    private String normalizeQuery(ChatRequestDTO requestBody) {
-        if (requestBody == null || requestBody.uQuery() == null) {
+    private String normalizeQuery(String requestBody) {
+        if (requestBody == null) {
             return "";
         }
-        return requestBody.uQuery().trim();
+
+        String trimmed = requestBody.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+
+        if (trimmed.startsWith("{")) {
+            try {
+                JsonNode root = objectMapper.readTree(trimmed);
+                JsonNode queryNode = root.get("uQuery");
+                if (queryNode != null && !queryNode.isNull()) {
+                    return queryNode.asText("").trim();
+                }
+            } catch (Exception ignored) {
+                // fall through to raw text handling
+            }
+        }
+
+        return trimmed;
     }
 
 

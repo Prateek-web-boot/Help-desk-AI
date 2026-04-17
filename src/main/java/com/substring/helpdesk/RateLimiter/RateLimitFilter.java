@@ -3,6 +3,7 @@ package com.substring.helpdesk.RateLimiter;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         //Get the IP Address
         String ip= request.getHeader("X-FORWARDED-FOR");
         if(ip == null || ip.isEmpty()) {
@@ -47,8 +53,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } else {
             //Reject if empty
-            // 1. Manually add CORS headers so Vercel accepts the 429 response
-            response.setHeader("Access-Control-Allow-Origin", "https://helpdesk-ai-frontend-green.vercel.app");
+            String origin = request.getHeader("Origin");
+            if (origin != null && !origin.isBlank()) {
+                response.setHeader("Access-Control-Allow-Origin", origin);
+            }
             response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             response.setHeader("Access-Control-Allow-Headers", "*");
             response.setHeader("Access-Control-Allow-Credentials", "true");
