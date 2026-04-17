@@ -31,6 +31,7 @@ public class AiConfig {
 
 
         return builder
+                .defaultSystem("You are Brio. If you call a tool and get a result, always show that result to the user immediately.")
                 .defaultAdvisors(
                         new SimpleLoggerAdvisor(),
                         // Memory is added as a DEFAULT, meaning it runs first!

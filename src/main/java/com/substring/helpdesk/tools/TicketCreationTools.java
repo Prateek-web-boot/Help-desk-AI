@@ -1,10 +1,10 @@
 package com.substring.helpdesk.tools;
 
-import com.substring.helpdesk.repository.TicketRepository;
 import com.substring.helpdesk.entity.Priority;
 import com.substring.helpdesk.entity.Status;
 import com.substring.helpdesk.entity.Ticket;
 import com.substring.helpdesk.entity.TicketInput;
+import com.substring.helpdesk.service.TicketCreationOutcome;
 import com.substring.helpdesk.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -24,7 +24,7 @@ public class TicketCreationTools {
 
     private final TicketService ticketService;
 
-    @Tool(description = "Create a new help desk ticket once email, summary, and description are known")
+    @Tool(description = "Create a new help desk ticket. Duplicate suppression is handled by the service layer.")
     public String createTicket(@ToolParam(description = "The details for the new ticket") TicketInput input) {
         Ticket ticket = Ticket.builder()
                 .summary(input.summary())
@@ -35,7 +35,11 @@ public class TicketCreationTools {
                 .status(Status.OPEN)
                 .build();
 
-        Ticket saved = ticketService.createTicket(ticket);
+        TicketCreationOutcome outcome = ticketService.createTicket(ticket);
+        Ticket saved = outcome.ticket();
+        if (outcome.duplicate()) {
+            return "SUCCESS: Ticket #" + saved.getId() + " already existed and was reused for " + saved.getEmail();
+        }
         return "SUCCESS: Ticket #" + saved.getId() + " created for " + saved.getEmail();
     }
 
