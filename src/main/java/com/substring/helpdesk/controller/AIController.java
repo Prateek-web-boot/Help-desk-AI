@@ -1,12 +1,11 @@
 package com.substring.helpdesk.controller;
 
+import com.substring.helpdesk.entity.ChatMessageDTO;
+import com.substring.helpdesk.entity.ChatRequestDTO;
 import com.substring.helpdesk.entity.Conversation;
-import com.substring.helpdesk.entity.Player;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
-import com.substring.helpdesk.service.SemanticCacheService;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,24 +30,9 @@ public class AIController {
     private JdbcChatMemoryRepository jdbcChatMemoryRepository;
     @Autowired
     private AudioToTextService audioToTextService;
-
-    @Autowired
-    private SemanticCacheService semanticCacheService;
-
-
-    private ChatClient chatClient;
-
-    public AIController(ChatClient.Builder chatClientBuilder) {
-
-        this.chatClient = chatClientBuilder
-//        .defaultTools(toolCallbackProvider)
-    .build();
-
-
-    }
     @PostMapping
-    public ResponseEntity<String> addTicket(@RequestBody String uQuery, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
-        String response = aiService.chatResponse(uQuery,conversationId, email);
+    public ResponseEntity<String> addTicket(@RequestBody ChatRequestDTO requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
+        String response = aiService.chatResponse(normalizeQuery(requestBody), conversationId, email);
         return ResponseEntity.ok(response);
     }
 
@@ -56,10 +40,11 @@ public class AIController {
     // 1. CHAT ENDPOINT: Handles sending messages and creating conversation metadata
     @PostMapping("/chat")
     public ResponseEntity<String> chat(
-            @RequestBody String uQuery,
+            @RequestBody ChatRequestDTO requestBody,
             @RequestHeader("conversationId") String conversationId,
             @RequestHeader("userEmail") String email) {
 
+        String uQuery = normalizeQuery(requestBody);
 
         // If this is the first message in a new session, create the sidebar entry
         if (!conversationRepository.existsById(conversationId)) {
@@ -147,9 +132,6 @@ public class AIController {
         return ResponseEntity.ok(dtoList);
     }
 
-    // Simple record for serialization
-    public record ChatMessageDTO(String role, String content) {}
-
     //4. Audio to Text ENDPOINT
     @PostMapping("/transcribe")
     public ResponseEntity<String> convertAudioToText(@RequestHeader("audio") MultipartFile file) throws IOException {
@@ -158,6 +140,13 @@ public class AIController {
         String text = audioToTextService.transcribe(audioResource);
         return ResponseEntity.ok(text);
 
+    }
+
+    private String normalizeQuery(ChatRequestDTO requestBody) {
+        if (requestBody == null || requestBody.uQuery() == null) {
+            return "";
+        }
+        return requestBody.uQuery().trim();
     }
 
 

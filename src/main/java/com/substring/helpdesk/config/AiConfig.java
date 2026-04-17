@@ -1,22 +1,20 @@
 package com.substring.helpdesk.config;
 
-import io.modelcontextprotocol.client.McpClient;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class AiConfig {
 
-    Logger logger = LoggerFactory.getLogger(AiConfig.class);
+    @Value("${app.ai.log-prompts:false}")
+    private boolean logPrompts;
 
     @Bean
     public ChatMemory chatMemory(JdbcChatMemoryRepository chatMemoryRepository) {
@@ -28,13 +26,20 @@ public class AiConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+        var chatClientBuilder = builder
+                .defaultSystem("You are Brio, a concise help desk assistant. Answer clearly, use tools when needed, and show the actual result of any tool call.");
 
+        if (logPrompts) {
+            return chatClientBuilder
+                    .defaultAdvisors(
+                            new SimpleLoggerAdvisor(),
+                            MessageChatMemoryAdvisor.builder(chatMemory).build()
+                    )
+                    .build();
+        }
 
-        return builder
-                .defaultSystem("You are Brio. If you call a tool and get a result, always show that result to the user immediately.")
+        return chatClientBuilder
                 .defaultAdvisors(
-                        new SimpleLoggerAdvisor(),
-                        // Memory is added as a DEFAULT, meaning it runs first!
                         MessageChatMemoryAdvisor.builder(chatMemory).build()
                 )
                 .build();
