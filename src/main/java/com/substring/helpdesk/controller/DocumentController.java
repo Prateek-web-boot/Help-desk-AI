@@ -2,10 +2,13 @@ package com.substring.helpdesk.controller;
 
 import com.substring.helpdesk.service.DocumentIngestPipeline;
 import com.substring.helpdesk.service.PdfLoaderService;
+import org.springframework.ai.document.Document;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/docs")
@@ -28,17 +31,9 @@ public class DocumentController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        String content = pdfLoaderService.loadPdfText(file);
-
-        documentIngestPipeline.ingest(content, project);
+        List<Document> pages = pdfLoaderService.loadPdfDocuments(file);
+        documentIngestPipeline.ingest(pages, project);
 
         return ResponseEntity.ok("Document Uploaded & Ingested successfully!");
-
-
-
     }
-
-
-
-
 }

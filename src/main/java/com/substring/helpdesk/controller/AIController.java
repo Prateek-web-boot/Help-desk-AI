@@ -1,6 +1,8 @@
 package com.substring.helpdesk.controller;
 
 import com.substring.helpdesk.entity.ChatMessageDTO;
+import com.substring.helpdesk.entity.ChatMode;
+import com.substring.helpdesk.entity.ChatRequestDTO;
 import com.substring.helpdesk.entity.Conversation;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
@@ -35,7 +37,8 @@ public class AIController {
     private ObjectMapper objectMapper;
     @PostMapping
     public ResponseEntity<String> addTicket(@RequestBody String requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
-        String response = aiService.chatResponse(normalizeQuery(requestBody), conversationId, email);
+        ChatRequestDTO request = parseChatRequest(requestBody);
+        String response = aiService.chatResponse(request.uQuery(), conversationId, email, request.mode(), request.project());
         return ResponseEntity.ok(response);
     }
 
@@ -47,7 +50,8 @@ public class AIController {
             @RequestHeader("conversationId") String conversationId,
             @RequestHeader("userEmail") String email) {
 
-        String uQuery = normalizeQuery(requestBody);
+        ChatRequestDTO request = parseChatRequest(requestBody);
+        String uQuery = request.uQuery();
 
         // If this is the first message in a new session, create the sidebar entry
         if (!conversationRepository.existsById(conversationId)) {
@@ -62,7 +66,7 @@ public class AIController {
         }
 
         // Get AI Response using your AIService
-        String response = aiService.chatResponse(uQuery, conversationId, email);
+        String response = aiService.chatResponse(uQuery, conversationId, email, request.mode(), request.project());
 
         return ResponseEntity.ok(response);
 
@@ -145,29 +149,44 @@ public class AIController {
 
     }
 
-    private String normalizeQuery(String requestBody) {
+    private ChatRequestDTO parseChatRequest(String requestBody) {
         if (requestBody == null) {
-            return "";
+            return new ChatRequestDTO("", ChatMode.TICKET, "");
         }
 
         String trimmed = requestBody.trim();
         if (trimmed.isEmpty()) {
-            return "";
+            return new ChatRequestDTO("", ChatMode.TICKET, "");
         }
 
         if (trimmed.startsWith("{")) {
             try {
                 JsonNode root = objectMapper.readTree(trimmed);
                 JsonNode queryNode = root.get("uQuery");
+                if (queryNode == null) {
+                    queryNode = root.get("query");
+                }
+                JsonNode modeNode = root.get("mode");
+                if (modeNode == null) {
+                    modeNode = root.get("chatMode");
+                }
+                JsonNode projectNode = root.get("project");
+                if (projectNode == null) {
+                    projectNode = root.get("docProject");
+                }
                 if (queryNode != null && !queryNode.isNull()) {
-                    return queryNode.asText("").trim();
+                    return new ChatRequestDTO(
+                            queryNode.asText("").trim(),
+                            ChatMode.from(modeNode != null ? modeNode.asText(null) : null),
+                            projectNode != null && !projectNode.isNull() ? projectNode.asText("") : ""
+                    );
                 }
             } catch (Exception ignored) {
                 // fall through to raw text handling
             }
         }
 
-        return trimmed;
+        return new ChatRequestDTO(trimmed, ChatMode.TICKET, "");
     }
 
 
