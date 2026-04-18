@@ -7,6 +7,7 @@ import com.substring.helpdesk.entity.Conversation;
 import com.substring.helpdesk.repository.ConversationRepository;
 import com.substring.helpdesk.service.AIService;
 import com.substring.helpdesk.service.AudioToTextService;
+import com.substring.helpdesk.service.ProjectCatalogService;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,6 +36,8 @@ public class AIController {
     private AudioToTextService audioToTextService;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private ProjectCatalogService projectCatalogService;
     @PostMapping
     public ResponseEntity<String> addTicket(@RequestBody String requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
         ChatRequestDTO request = parseChatRequest(requestBody);
@@ -137,6 +140,11 @@ public class AIController {
                 .toList();
 
         return ResponseEntity.ok(dtoList);
+    }
+
+    @GetMapping("/projects")
+    public ResponseEntity<List<String>> getProjects() {
+        return ResponseEntity.ok(projectCatalogService.getAvailableProjects());
     }
 
     //4. Audio to Text ENDPOINT
