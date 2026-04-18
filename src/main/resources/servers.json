@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "D:/Spring AI/mcp-server",
+        "D:/Spring AI/personal_Data"
+      ]
+    },
+    "git": {
+      "command": "D:\\Spring AI\\Help-desk-AI\\servers\\src\\git\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "mcp_server_git"
+      ]
+    }
+  }
+}

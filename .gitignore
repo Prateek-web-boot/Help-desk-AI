@@ -38,3 +38,9 @@ build/
 target/
 out/
 *.log
+.uv-cache/
+.uv-python/
+
+# Local MCP filesystem workspace. Keep the directory, ignore generated helpdesk files.
+helpdesk-files/*
+!helpdesk-files/.gitkeep
