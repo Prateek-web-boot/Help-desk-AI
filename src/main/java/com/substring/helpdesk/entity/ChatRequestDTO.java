@@ -1,6 +1,6 @@
 package com.substring.helpdesk.entity;
 
-public record ChatRequestDTO(String uQuery, ChatMode mode, String project, boolean allowFileTools) {
+public record ChatRequestDTO(String uQuery, ChatMode mode, String project) {
 
     public ChatRequestDTO {
         mode = mode == null ? ChatMode.TICKET : mode;

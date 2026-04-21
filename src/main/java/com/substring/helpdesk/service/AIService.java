@@ -73,11 +73,7 @@ public class AIService {
     }
 
     public String chatResponse(String uQuery, String convoId, String userEmail) {
-        return chatResponse(uQuery, convoId, userEmail, ChatMode.TICKET, "", false);
-    }
-
-    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project) {
-        return chatResponse(uQuery, convoId, userEmail, mode, project, false);
+        return chatResponse(uQuery, convoId, userEmail, ChatMode.TICKET, "");
     }
 
     @Retryable(
@@ -89,20 +85,20 @@ public class AIService {
                     maxDelay = 10000   // Never wait more than 10 seconds
             )
     )
-    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project, boolean allowFileTools) {
+    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project) {
         ChatMode resolvedMode = mode == null ? ChatMode.TICKET : mode;
 
         return switch (resolvedMode) {
-            case RAG -> ragResponse(uQuery, convoId, userEmail, project, allowFileTools);
-            case TICKET -> ticketResponse(uQuery, convoId, userEmail, allowFileTools);
+            case RAG -> ragResponse(uQuery, convoId, userEmail, project);
+            case TICKET -> ticketResponse(uQuery, convoId, userEmail);
         };
     }
 
     public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode) {
-        return chatResponse(uQuery, convoId, userEmail, mode, "", false);
+        return chatResponse(uQuery, convoId, userEmail, mode, "");
     }
 
-    private String ticketResponse(String uQuery, String convoId, String userEmail, boolean allowFileTools) {
+    private String ticketResponse(String uQuery, String convoId, String userEmail) {
         log.debug("Received ticket-mode chat request for conversationId={} and userEmail={}", convoId, userEmail);
 
         String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail, uQuery, convoId, ChatMode.TICKET);
@@ -123,6 +119,7 @@ public class AIService {
                 "[IDENTITY CONTEXT]: user email is %s. Never ask again.",
                 userEmail
         );
+        boolean mcpAvailable = !mcpToolCallbackProviders.isEmpty();
 
         var prompt = this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
@@ -136,10 +133,10 @@ public class AIService {
                                                 .build())
                                         .build()
                         ))
-                .system(s -> s.text(buildSystemPrompt(systemPromptResource, identityInstructions, allowFileTools, !mcpToolCallbackProviders.isEmpty())))
+                .system(s -> s.text(buildSystemPrompt(systemPromptResource, identityInstructions, mcpAvailable)))
                 .tools(ticketCreationTools, emailTool);
 
-        if (allowFileTools && !mcpToolCallbackProviders.isEmpty()) {
+        if (mcpAvailable) {
             prompt = prompt.toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]));
         }
 
@@ -155,7 +152,7 @@ public class AIService {
         return response;
     }
 
-    private String ragResponse(String uQuery, String convoId, String userEmail, String project, boolean allowFileTools) {
+    private String ragResponse(String uQuery, String convoId, String userEmail, String project) {
         log.debug("Received RAG-mode chat request for conversationId={} and userEmail={}", convoId, userEmail);
 
         String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail, uQuery, convoId, ChatMode.RAG);
@@ -176,6 +173,7 @@ public class AIService {
                 "[IDENTITY CONTEXT]: user email is %s. Use it only for personalization and cache scoping.",
                 userEmail
         );
+        boolean mcpAvailable = !mcpToolCallbackProviders.isEmpty();
 
         var prompt = this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
@@ -192,9 +190,9 @@ public class AIService {
                                                 .build())
                                         .build()
                         ))
-                .system(s -> s.text(buildSystemPrompt(ragSystemPromptResource, identityInstructions, allowFileTools, !mcpToolCallbackProviders.isEmpty())));
+                .system(s -> s.text(buildSystemPrompt(ragSystemPromptResource, identityInstructions, mcpAvailable)));
 
-        if (allowFileTools && !mcpToolCallbackProviders.isEmpty()) {
+        if (mcpAvailable) {
             prompt = prompt.toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]));
         }
 
@@ -225,11 +223,8 @@ public class AIService {
                 .build();
     }
 
-    private String buildSystemPrompt(Resource basePromptResource, String identityInstructions, boolean allowFileTools, boolean mcpAvailable) {
+    private String buildSystemPrompt(Resource basePromptResource, String identityInstructions, boolean mcpAvailable) {
         String prompt = readResource(basePromptResource).replace("{identity}", identityInstructions);
-        if (!allowFileTools) {
-            return prompt;
-        }
 
         String fileToolInstructions = """
 
@@ -262,7 +257,7 @@ Important: the MCP filesystem tool is not available in this runtime, so you cann
     }
 
     @Recover
-    public String recover(Exception e, String uQuery, String convoId, String userEmail, ChatMode mode, String project, boolean allowFileTools) {
+    public String recover(Exception e, String uQuery, String convoId, String userEmail, ChatMode mode, String project) {
         log.error(
                 "All retries failed for conversationId={} and userEmail={} while processing query={} in mode={}",
                 convoId,

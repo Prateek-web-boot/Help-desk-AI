@@ -45,7 +45,7 @@ public class AIController {
     @PostMapping
     public ResponseEntity<String> addTicket(@RequestBody String requestBody, @RequestHeader("conversationId") String conversationId, @RequestHeader("userEmail") String email) {
         ChatRequestDTO request = parseChatRequest(requestBody);
-        String response = aiService.chatResponse(request.uQuery(), conversationId, email, request.mode(), request.project(), request.allowFileTools());
+        String response = aiService.chatResponse(request.uQuery(), conversationId, email, request.mode(), request.project());
         return ResponseEntity.ok(response);
     }
 
@@ -73,7 +73,7 @@ public class AIController {
         }
 
         // Get AI Response using your AIService
-        String response = aiService.chatResponse(uQuery, conversationId, email, request.mode(), request.project(), request.allowFileTools());
+        String response = aiService.chatResponse(uQuery, conversationId, email, request.mode(), request.project());
 
         return ResponseEntity.ok(response);
 
@@ -163,12 +163,12 @@ public class AIController {
 
     private ChatRequestDTO parseChatRequest(String requestBody) {
         if (requestBody == null) {
-            return new ChatRequestDTO("", ChatMode.TICKET, "", false);
+            return new ChatRequestDTO("", ChatMode.TICKET, "");
         }
 
         String trimmed = requestBody.trim();
         if (trimmed.isEmpty()) {
-            return new ChatRequestDTO("", ChatMode.TICKET, "", false);
+            return new ChatRequestDTO("", ChatMode.TICKET, "");
         }
 
         if (trimmed.startsWith("{")) {
@@ -186,20 +186,11 @@ public class AIController {
                 if (projectNode == null) {
                     projectNode = root.get("docProject");
                 }
-                JsonNode fileToolsNode = root.get("allowFileTools");
-                if (fileToolsNode == null) {
-                    fileToolsNode = root.get("fileTools");
-                }
-                if (fileToolsNode == null) {
-                    fileToolsNode = root.get("enableFileTools");
-                }
                 if (queryNode != null && !queryNode.isNull()) {
-                    boolean allowFileTools = parseBooleanLike(fileToolsNode);
                     return new ChatRequestDTO(
                             queryNode.asText("").trim(),
                             ChatMode.from(modeNode != null ? modeNode.asText(null) : null),
-                            projectNode != null && !projectNode.isNull() ? projectNode.asText("") : "",
-                            allowFileTools
+                            projectNode != null && !projectNode.isNull() ? projectNode.asText("") : ""
                     );
                 }
             } catch (Exception ignored) {
@@ -207,30 +198,7 @@ public class AIController {
             }
         }
 
-        return new ChatRequestDTO(trimmed, ChatMode.TICKET, "", false);
-    }
-
-    private boolean parseBooleanLike(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return false;
-        }
-
-        if (node.isBoolean()) {
-            return node.asBoolean(false);
-        }
-
-        if (node.isTextual()) {
-            String value = node.asText("").trim().toLowerCase();
-            return value.equals("true")
-                    || value.equals("1")
-                    || value.equals("yes")
-                    || value.equals("on")
-                    || value.equals("filetools")
-                    || value.equals("file-tools")
-                    || value.equals("enabled");
-        }
-
-        return node.asBoolean(false);
+        return new ChatRequestDTO(trimmed, ChatMode.TICKET, "");
     }
 
 
