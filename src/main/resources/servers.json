@@ -5,8 +5,8 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "D:/Spring AI/mcp-server",
-        "D:/Spring AI/personal_Data"
+        "D:/Spring AI/Help-desk-AI/mcp-server",
+        "D:/Spring AI/Help-desk-AI/helpdesk-files"
       ]
     },
     "git": {

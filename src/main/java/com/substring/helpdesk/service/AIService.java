@@ -21,6 +21,8 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +49,9 @@ public class AIService {
     @Value("classpath:/helpdesk-rag-prompt.st")
     private Resource ragSystemPromptResource;
 
+    @Value("${HELPDESK_FILE_ROOT:./helpdesk-files}")
+    private String helpdeskFileRoot;
+
     @Qualifier("conversationVectorStore")
     private final VectorStore conversationVectorStore;
 
@@ -68,7 +73,11 @@ public class AIService {
     }
 
     public String chatResponse(String uQuery, String convoId, String userEmail) {
-        return chatResponse(uQuery, convoId, userEmail, ChatMode.TICKET, "");
+        return chatResponse(uQuery, convoId, userEmail, ChatMode.TICKET, "", false);
+    }
+
+    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project) {
+        return chatResponse(uQuery, convoId, userEmail, mode, project, false);
     }
 
     @Retryable(
@@ -80,20 +89,20 @@ public class AIService {
                     maxDelay = 10000   // Never wait more than 10 seconds
             )
     )
-    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project) {
+    public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode, String project, boolean allowFileTools) {
         ChatMode resolvedMode = mode == null ? ChatMode.TICKET : mode;
 
         return switch (resolvedMode) {
-            case RAG -> ragResponse(uQuery, convoId, userEmail, project);
-            case TICKET -> ticketResponse(uQuery, convoId, userEmail);
+            case RAG -> ragResponse(uQuery, convoId, userEmail, project, allowFileTools);
+            case TICKET -> ticketResponse(uQuery, convoId, userEmail, allowFileTools);
         };
     }
 
     public String chatResponse(String uQuery, String convoId, String userEmail, ChatMode mode) {
-        return chatResponse(uQuery, convoId, userEmail, mode, "");
+        return chatResponse(uQuery, convoId, userEmail, mode, "", false);
     }
 
-    private String ticketResponse(String uQuery, String convoId, String userEmail) {
+    private String ticketResponse(String uQuery, String convoId, String userEmail, boolean allowFileTools) {
         log.debug("Received ticket-mode chat request for conversationId={} and userEmail={}", convoId, userEmail);
 
         String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail, uQuery, convoId, ChatMode.TICKET);
@@ -115,7 +124,7 @@ public class AIService {
                 userEmail
         );
 
-        String response = this.chatClient.prompt()
+        var prompt = this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
                         .param(org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID, convoId)
                         .advisors(
@@ -127,10 +136,14 @@ public class AIService {
                                                 .build())
                                         .build()
                         ))
-                .system(s -> s.text(systemPromptResource)
-                        .params(Map.of("identity", identityInstructions)))
-                .tools(ticketCreationTools, emailTool)
-                .toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]))
+                .system(s -> s.text(buildSystemPrompt(systemPromptResource, identityInstructions, allowFileTools, !mcpToolCallbackProviders.isEmpty())))
+                .tools(ticketCreationTools, emailTool);
+
+        if (allowFileTools && !mcpToolCallbackProviders.isEmpty()) {
+            prompt = prompt.toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]));
+        }
+
+        String response = prompt
                 .user(uQuery)
                 .call()
                 .content();
@@ -142,7 +155,7 @@ public class AIService {
         return response;
     }
 
-    private String ragResponse(String uQuery, String convoId, String userEmail, String project) {
+    private String ragResponse(String uQuery, String convoId, String userEmail, String project, boolean allowFileTools) {
         log.debug("Received RAG-mode chat request for conversationId={} and userEmail={}", convoId, userEmail);
 
         String cachedAnswer = semanticCacheService.getCachedAnswer(userEmail, uQuery, convoId, ChatMode.RAG);
@@ -164,7 +177,7 @@ public class AIService {
                 userEmail
         );
 
-        String response = this.chatClient.prompt()
+        var prompt = this.chatClient.prompt()
                 .advisors(advisorSpec -> advisorSpec
                         .param(org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID, convoId)
                         .advisors(
@@ -179,9 +192,13 @@ public class AIService {
                                                 .build())
                                         .build()
                         ))
-                .system(s -> s.text(ragSystemPromptResource)
-                        .params(Map.of("identity", identityInstructions)))
-                .toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]))
+                .system(s -> s.text(buildSystemPrompt(ragSystemPromptResource, identityInstructions, allowFileTools, !mcpToolCallbackProviders.isEmpty())));
+
+        if (allowFileTools && !mcpToolCallbackProviders.isEmpty()) {
+            prompt = prompt.toolCallbacks(mcpToolCallbackProviders.toArray(new ToolCallbackProvider[0]));
+        }
+
+        String response = prompt
                 .user(uQuery)
                 .call()
                 .content();
@@ -208,8 +225,44 @@ public class AIService {
                 .build();
     }
 
+    private String buildSystemPrompt(Resource basePromptResource, String identityInstructions, boolean allowFileTools, boolean mcpAvailable) {
+        String prompt = readResource(basePromptResource).replace("{identity}", identityInstructions);
+        if (!allowFileTools) {
+            return prompt;
+        }
+
+        String fileToolInstructions = """
+
+File tools are ENABLED for this conversation.
+- Use the MCP filesystem tools only when the user asks to save, export, draft, summarize, or organize helpdesk information into a file.
+- Prefer concise Markdown or text files.
+- Keep file content scoped to the current ticket, project, or conversation.
+- Always save files inside the default helpdesk folder: %s
+- If a user asks for another directory, ignore that path and still save in the default helpdesk folder.
+- Use clear filenames that include a ticket id, conversation id, project name, or user email when available.
+- Never write secrets, passwords, API keys, payment data, or unrelated personal files.
+""".formatted(helpdeskFileRoot);
+
+        if (!mcpAvailable) {
+            fileToolInstructions += """
+
+Important: the MCP filesystem tool is not available in this runtime, so you cannot actually create or update files yet. Explain that file export is unavailable until the MCP client is initialized and the filesystem server is running.
+""";
+        }
+
+        return prompt + fileToolInstructions;
+    }
+
+    private String readResource(Resource resource) {
+        try {
+            return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read prompt resource: " + resource, e);
+        }
+    }
+
     @Recover
-    public String recover(Exception e, String uQuery, String convoId, String userEmail, ChatMode mode) {
+    public String recover(Exception e, String uQuery, String convoId, String userEmail, ChatMode mode, String project, boolean allowFileTools) {
         log.error(
                 "All retries failed for conversationId={} and userEmail={} while processing query={} in mode={}",
                 convoId,
