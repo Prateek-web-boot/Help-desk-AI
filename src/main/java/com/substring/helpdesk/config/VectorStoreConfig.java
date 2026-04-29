@@ -27,25 +27,6 @@ public class VectorStoreConfig {
 //                .indexName(indexName)
 //                .build();
 //    }
-
-
-    @Bean(name = "conversationVectorStore")
-    public VectorStore pgVectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
-        return PgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .vectorTableName("semantic_cache")
-                .initializeSchema(true)
-                .build();
-    }
-
-
-    @Bean(name = "userQueryCacheVectorStore")
-    public VectorStore semanticCacheVectorStore(EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
-        return PgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .vectorTableName("user_query_cache")
-                .initializeSchema(true)
-                .build();
-    }
-
     @Primary
     @Bean(name = "companyDocsVectorStore")
     public VectorStore companyDocsVectorStore(

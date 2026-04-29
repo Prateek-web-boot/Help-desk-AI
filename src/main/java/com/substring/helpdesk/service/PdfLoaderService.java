@@ -43,6 +43,7 @@ public class PdfLoaderService {
                     metadata.put("page_number", pageNumber);
                     metadata.put("page_count", totalPages);
                     metadata.put("source_type", "pdf");
+                    metadata.put("source_reference", String.format("%s | page %d/%d", safeFilename(file), pageNumber, totalPages));
 
                     pages.add(new Document(text, metadata));
                 }

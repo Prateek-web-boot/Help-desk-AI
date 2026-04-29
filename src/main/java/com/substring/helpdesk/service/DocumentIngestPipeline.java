@@ -6,6 +6,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +19,15 @@ import java.util.Map;
 public class DocumentIngestPipeline {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentIngestPipeline.class);
-    private static final int CHUNK_SIZE = 350;
-    private static final int OVERLAP_WORDS = 40;
+
+    @Value("${helpdesk.rag.chunk-size:350}")
+    private int chunkSize = 350;
+
+    @Value("${helpdesk.rag.chunk-overlap-words:40}")
+    private int overlapWords = 40;
+
+    @Value("${helpdesk.rag.include-source-prefix:true}")
+    private boolean includeSourcePrefix = true;
 
     @Qualifier("companyDocsVectorStore")
     private final VectorStore companyDocsVectorStore;
@@ -41,14 +49,14 @@ public class DocumentIngestPipeline {
         }
 
         TokenTextSplitter splitter = TokenTextSplitter.builder()
-                .withChunkSize(CHUNK_SIZE)
+                .withChunkSize(chunkSize)
                 .build();
 
         List<Document> finalChunks = new ArrayList<>();
 
         for (Document sourceDocument : sourceDocuments) {
             List<Document> baseChunks = splitter.apply(List.of(sourceDocument));
-            List<Document> overlappedChunks = applyOverlap(baseChunks, OVERLAP_WORDS);
+            List<Document> overlappedChunks = applyOverlap(baseChunks, overlapWords);
 
             for (int i = 0; i < overlappedChunks.size(); i++) {
                 Document chunk = overlappedChunks.get(i);
@@ -63,10 +71,20 @@ public class DocumentIngestPipeline {
                 metadata.put("project", project);
                 metadata.put("chunk_index", i);
                 metadata.put("global_chunk_index", finalChunks.size());
-                metadata.put("chunk_size", CHUNK_SIZE);
-                metadata.put("chunk_overlap_words", OVERLAP_WORDS);
+                metadata.put("chunk_size", chunkSize);
+                metadata.put("chunk_overlap_words", overlapWords);
 
-                finalChunks.add(new Document(normalizeWhitespace(chunk.getText()), metadata));
+                String sourceReference = buildSourceReference(metadata);
+                if (sourceReference != null) {
+                    metadata.put("source_reference", sourceReference);
+                }
+
+                String chunkText = normalizeWhitespace(chunk.getText());
+                if (includeSourcePrefix && sourceReference != null) {
+                    chunkText = "Source: " + sourceReference + "\n\n" + chunkText;
+                }
+
+                finalChunks.add(new Document(chunkText, metadata));
             }
         }
 
@@ -107,5 +125,30 @@ public class DocumentIngestPipeline {
             return "";
         }
         return text.replace('\u00a0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private String buildSourceReference(Map<String, Object> metadata) {
+        Object sourceReference = metadata.get("source_reference");
+        if (sourceReference != null && !sourceReference.toString().isBlank()) {
+            return sourceReference.toString();
+        }
+
+        Object sourceFile = metadata.get("source_file");
+        Object pageNumber = metadata.get("page_number");
+        Object pageCount = metadata.get("page_count");
+
+        if (sourceFile == null || pageNumber == null) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder(sourceFile.toString())
+                .append(" | page ")
+                .append(pageNumber);
+
+        if (pageCount != null) {
+            builder.append('/').append(pageCount);
+        }
+
+        return builder.toString();
     }
 }
